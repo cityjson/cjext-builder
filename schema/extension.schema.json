@@ -1,120 +1,235 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CityJSON Extension specifications v2.0",
+  "description": "Schema for defining CityJSON Extensions that add custom City Objects, attributes, semantic surfaces, and root properties",
   "type": "object",
 
   "definitions": {
 
-    "Plus": {
+    "jsonSchema": {
+      "description": "A valid JSON Schema definition",
+      "type": "object"
+    },
+
+    "extraAttributesForCityObject": {
+      "description": "Extra attributes for a CityObject type. Keys must start with '+' followed by the attribute name",
+      "type": "object",
       "patternProperties": {
-        "(\\+)\\w+": {}
+        "^\\+[a-zA-Z_][a-zA-Z0-9_-]*$": {
+          "$ref": "#/definitions/jsonSchema"
+        }
       },
       "additionalProperties": false
+    },
+
+    "cityObjectDefinition": {
+      "description": "Schema definition for a custom City Object type",
+      "type": "object",
+      "properties": {
+        "allOf": {
+          "type": "array",
+          "description": "Must include a $ref to the parent CityObject type and the object's own schema",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 1
+        },
+        "$ref": {
+          "type": "string",
+          "description": "Reference to a parent CityObject schema"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "semanticSurfaceDefinition": {
+      "description": "Schema definition for a custom Semantic Surface type",
+      "type": "object",
+      "properties": {
+        "allOf": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "$ref": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "object",
+              "properties": {
+                "enum": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            },
+            "parent": {
+              "type": "object"
+            },
+            "attributes": {
+              "type": "object"
+            }
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
     }
 
   },
 
-
   "properties": {
-    "type": { "enum": ["CityJSONExtension"] },
-    "name": { 
-      "type": "string",
-      "pattern": "^\\w[a-zA-Z@#0-9._]*$",
-      "description": "no spaces allowed"
+    "type": {
+      "enum": ["CityJSONExtension"],
+      "description": "Must be 'CityJSONExtension'"
     },
 
-    "version": { 
+    "name": {
       "type": "string",
-      "pattern": "^(\\d\\.)(\\d+\\.)?(\\*|\\d+)$"
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_@#.]*$",
+      "description": "The name of the extension. Must start with a letter, no spaces allowed. Used as an identifier."
     },
 
-    "versionCityJSON": { 
+    "version": {
       "type": "string",
-      "pattern": "^(\\d\\.)(\\d)$"
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "description": "Semantic version of this extension (e.g., '1.0', '1.0.0', '2.1.3')"
+    },
+
+    "versionCityJSON": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "The CityJSON version this extension is compatible with (e.g., '2.0')"
     },
 
     "url": {
       "type": "string",
-      "format": "uri-reference",
-      "description": "good to host the extension at a URL so that others can access it"
+      "format": "uri",
+      "description": "The URL where this extension schema is hosted. Recommended to use a stable, publicly accessible URL."
     },
 
-    "description": { "type": "string" },
-    
-    "extraRootProperties":{
+    "uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URI identifier for this extension (alternative to 'url')"
+    },
+
+    "description": {
+      "type": "string",
+      "description": "A human-readable description of what this extension provides"
+    },
+
+    "definitions": {
+      "type": "object",
+      "description": "Reusable JSON Schema definitions that can be referenced within this extension using $ref",
+      "additionalProperties": {
+        "$ref": "#/definitions/jsonSchema"
+      }
+    },
+
+    "extraRootProperties": {
+      "type": "object",
+      "description": "Additional properties to add at the root level of a CityJSON document. Keys must start with '+' or '@'",
       "patternProperties": {
-        "(\\+|\\@)\\w+": {}
+        "^(\\+|@)[a-zA-Z_][a-zA-Z0-9_-]*$": {
+          "$ref": "#/definitions/jsonSchema"
+        }
       },
       "additionalProperties": false
     },
 
     "extraAttributes": {
       "type": "object",
+      "description": "Extra attributes to add to existing CityObject types. Each key is a CityObject type name, and the value defines the additional attributes",
       "properties": {
-        "Bridge": { "$ref": "#/definitions/Plus" },
-        "BridgeConstructiveElement": { "$ref": "#/definitions/Plus" },
-        "BridgeFurniture": { "$ref": "#/definitions/Plus" },
-        "BridgeInstallation": { "$ref": "#/definitions/Plus" },
-        "BridgePart": { "$ref": "#/definitions/Plus" },
-        "BridgeRoom": { "$ref": "#/definitions/Plus" },
-        "Building": { "$ref": "#/definitions/Plus" },
-        "BuildingPart": { "$ref": "#/definitions/Plus" },
-        "BuildingConstructiveElement": { "$ref": "#/definitions/Plus" },
-        "BuildingFurniture": { "$ref": "#/definitions/Plus" },
-        "BuildingInstallation": { "$ref": "#/definitions/Plus" },
-        "BuildingRoom": { "$ref": "#/definitions/Plus" },
-        "BuildingStorey": { "$ref": "#/definitions/Plus" },
-        "BuildingUnit": { "$ref": "#/definitions/Plus" },
-        "CityFurniture": { "$ref": "#/definitions/Plus" },
-        "CityObjectGroup": { "$ref": "#/definitions/Plus" },
-        "GenericCityObject": { "$ref": "#/definitions/Plus" },
-        "LandUse": { "$ref": "#/definitions/Plus" },
-        "OtherConstruction": { "$ref": "#/definitions/Plus" },
-        "PlantCover": { "$ref": "#/definitions/Plus" },
-        "Railway": { "$ref": "#/definitions/Plus" },
-        "Road": { "$ref": "#/definitions/Plus" },
-        "SolitaryVegetationObject": { "$ref": "#/definitions/Plus" },
-        "TINRelief": { "$ref": "#/definitions/Plus" },
-        "TransportSquare": { "$ref": "#/definitions/Plus" },
-        "Tunnel": { "$ref": "#/definitions/Plus" },
-        "TunnelConstructiveElement": { "$ref": "#/definitions/Plus" },
-        "TunnelFurniture": { "$ref": "#/definitions/Plus" },
-        "TunnelHollowSpace": { "$ref": "#/definitions/Plus" },
-        "TunnelInstallation": { "$ref": "#/definitions/Plus" },
-        "TunnelPart": { "$ref": "#/definitions/Plus" },
-        "WaterBody": { "$ref": "#/definitions/Plus" },
-        "Waterway": { "$ref": "#/definitions/Plus" }
+        "Bridge": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BridgeConstructiveElement": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BridgeFurniture": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BridgeInstallation": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BridgePart": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BridgeRoom": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "Building": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingConstructiveElement": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingFurniture": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingInstallation": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingPart": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingRoom": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingStorey": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "BuildingUnit": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "CityFurniture": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "CityObjectGroup": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "GenericCityObject": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "LandUse": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "OtherConstruction": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "PlantCover": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "Railway": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "Road": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "SolitaryVegetationObject": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TINRelief": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TransportSquare": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "Tunnel": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TunnelConstructiveElement": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TunnelFurniture": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TunnelHollowSpace": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TunnelInstallation": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "TunnelPart": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "Vegetation": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "WaterBody": { "$ref": "#/definitions/extraAttributesForCityObject" },
+        "Waterway": { "$ref": "#/definitions/extraAttributesForCityObject" }
       },
       "additionalProperties": false
     },
 
     "extraCityObjects": {
+      "type": "object",
+      "description": "New CityObject types to define. Keys must start with '+' followed by a capital letter (e.g., '+Potato', '+NoiseCityFurnitureSegment')",
       "patternProperties": {
-        "(\\+)([A-Z])\\w+": {}
+        "^\\+[A-Z][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/cityObjectDefinition"
+        }
       },
       "additionalProperties": false
     },
 
     "extraSemanticSurfaces": {
+      "type": "object",
+      "description": "New Semantic Surface types to define. Keys must start with '+' followed by a capital letter (e.g., '+ThermalSurface')",
       "patternProperties": {
-        "(\\+)([A-Z])\\w+": {}
+        "^\\+[A-Z][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/semanticSurfaceDefinition"
+        }
       },
       "additionalProperties": false
     }
 
   },
+
   "anyOf": [
-    {
-      "required": [
-        "url"
-      ]
-    },
-    {
-      "required": [
-        "uri"
-      ]
-    }
-  ], 
-  "required": ["type", "name", "version", "versionCityJSON", "extraAttributes", "extraCityObjects", "extraRootProperties", "extraSemanticSurfaces"]
+    { "required": ["url"] },
+    { "required": ["uri"] }
+  ],
+
+  "required": [
+    "type",
+    "name",
+    "version",
+    "versionCityJSON",
+    "extraAttributes",
+    "extraCityObjects",
+    "extraRootProperties",
+    "extraSemanticSurfaces"
+  ],
+
+  "additionalProperties": false
 }
 
