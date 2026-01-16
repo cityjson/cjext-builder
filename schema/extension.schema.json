@@ -11,12 +11,82 @@
       "type": "object"
     },
 
+    "primitiveType": {
+      "description": "Primitive attribute type (for use within objects - no nesting allowed)",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "integer", "boolean"]
+        },
+        "enum": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+
+    "arrayType": {
+      "description": "Array type (items can only be primitives)",
+      "type": "object",
+      "properties": {
+        "type": { "const": "array" },
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": { "enum": ["string", "number", "integer", "boolean"] }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        },
+        "minItems": { "type": "integer", "minimum": 0 },
+        "maxItems": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["type", "items"],
+      "additionalProperties": false
+    },
+
+    "objectType": {
+      "description": "Object type - properties can only be primitives or arrays (no nested objects)",
+      "type": "object",
+      "properties": {
+        "type": { "const": "object" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "$ref": "#/definitions/primitiveType" },
+              { "$ref": "#/definitions/arrayType" }
+            ]
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "additionalProperties": { "type": "boolean" }
+      },
+      "required": ["type", "properties"],
+      "additionalProperties": false
+    },
+
+    "extraAttributeSchema": {
+      "description": "Schema for an extra attribute (one level of nesting max)",
+      "oneOf": [
+        { "$ref": "#/definitions/primitiveType" },
+        { "$ref": "#/definitions/arrayType" },
+        { "$ref": "#/definitions/objectType" }
+      ]
+    },
+
     "extraAttributesForCityObject": {
       "description": "Extra attributes for a CityObject type. Keys must start with '+' followed by the attribute name",
       "type": "object",
       "patternProperties": {
         "^\\+[a-zA-Z_][a-zA-Z0-9_-]*$": {
-          "$ref": "#/definitions/jsonSchema"
+          "$ref": "#/definitions/extraAttributeSchema"
         }
       },
       "additionalProperties": false

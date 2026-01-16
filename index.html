@@ -245,6 +245,43 @@
     .attr-cityobject-select {
       margin-bottom: 10px;
     }
+
+    .object-properties-editor {
+      display: none;
+      margin-top: 10px;
+      margin-left: 20px;
+      padding: 10px;
+      border-left: 3px solid #6449d6;
+      background: #f9f9ff;
+    }
+
+    .object-properties-editor.active {
+      display: block;
+    }
+
+    .object-properties-editor .object-prop-row {
+      display: grid;
+      grid-template-columns: 1fr 150px auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 8px;
+    }
+
+    .object-properties-editor .object-prop-row input,
+    .object-properties-editor .object-prop-row select {
+      margin-bottom: 0;
+    }
+
+    .object-properties-editor label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .object-properties-editor .btn-add-obj-prop {
+      margin-top: 5px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -371,6 +408,18 @@
       { value: "boolean", label: "boolean" },
       { value: "array-string", label: "array of strings" },
       { value: "array-integer", label: "array of integers" },
+      { value: "array-number", label: "array of numbers" },
+      { value: "object", label: "object" }
+    ];
+
+    // Types allowed inside an object (no nested objects)
+    const OBJECT_PROPERTY_TYPES = [
+      { value: "string", label: "string" },
+      { value: "integer", label: "integer" },
+      { value: "number", label: "number" },
+      { value: "boolean", label: "boolean" },
+      { value: "array-string", label: "array of strings" },
+      { value: "array-integer", label: "array of integers" },
       { value: "array-number", label: "array of numbers" }
     ];
 
@@ -387,6 +436,45 @@
       });
     });
 
+    let objectPropCounters = {};
+
+    function createObjectPropertyRow(parentId, propId) {
+      return `
+        <div class="object-prop-row" id="obj-prop-${parentId}-${propId}">
+          <div>
+            <input type="text" placeholder="propertyName" class="obj-prop-name">
+          </div>
+          <div>
+            <select class="obj-prop-type">
+              ${OBJECT_PROPERTY_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-danger" onclick="this.closest('.object-prop-row').remove()">Remove</button>
+        </div>
+      `;
+    }
+
+    function addObjectProperty(parentId) {
+      if (!objectPropCounters[parentId]) objectPropCounters[parentId] = 0;
+      const propId = ++objectPropCounters[parentId];
+      document.getElementById(`obj-props-${parentId}`).insertAdjacentHTML('beforeend',
+        createObjectPropertyRow(parentId, propId));
+    }
+
+    function handleTypeChange(selectEl, propId) {
+      const editor = document.getElementById(`obj-editor-${propId}`);
+      if (selectEl.value === 'object') {
+        editor.classList.add('active');
+        // Add initial property row if empty
+        const propsContainer = document.getElementById(`obj-props-${propId}`);
+        if (propsContainer.children.length === 0) {
+          addObjectProperty(propId);
+        }
+      } else {
+        editor.classList.remove('active');
+      }
+    }
+
     function createPropertyRow(id, namePrefix = '') {
       return `
         <div class="property-row" id="prop-${id}">
@@ -394,17 +482,23 @@
             <input type="text" placeholder="+propertyName" class="prop-name" value="${namePrefix}">
           </div>
           <div>
-            <select class="prop-type">
+            <select class="prop-type" onchange="handleTypeChange(this, '${id}')">
               ${JSON_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
             </select>
           </div>
           <button class="btn btn-danger" onclick="this.closest('.property-row').remove()">Remove</button>
+        </div>
+        <div class="object-properties-editor" id="obj-editor-${id}">
+          <label>Object Properties:</label>
+          <div class="obj-props-list" id="obj-props-${id}"></div>
+          <button class="btn btn-secondary btn-add-obj-prop" onclick="addObjectProperty('${id}')">+ Add Property</button>
         </div>
       `;
     }
 
     function addRootProperty() {
       const id = ++rootPropsCounter;
+      const propId = `root-${id}`;
       const html = `
         <div class="item" id="root-prop-${id}">
           <div class="item-header">
@@ -418,10 +512,15 @@
             </div>
             <div>
               <label>Type</label>
-              <select class="root-prop-type">
+              <select class="root-prop-type" onchange="handleTypeChange(this, '${propId}')">
                 ${JSON_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
               </select>
             </div>
+          </div>
+          <div class="object-properties-editor" id="obj-editor-${propId}">
+            <label>Object Properties:</label>
+            <div class="obj-props-list" id="obj-props-${propId}"></div>
+            <button class="btn btn-secondary btn-add-obj-prop" onclick="addObjectProperty('${propId}')">+ Add Property</button>
           </div>
           <label>Description</label>
           <input type="text" class="root-prop-desc" placeholder="Description of this property">
@@ -536,7 +635,7 @@
         createPropertyRow(`co-${coId}-${propId}`));
     }
 
-    function getTypeSchema(typeValue) {
+    function getBasicTypeSchema(typeValue) {
       switch(typeValue) {
         case 'string': return { type: 'string' };
         case 'integer': return { type: 'integer' };
@@ -547,6 +646,37 @@
         case 'array-number': return { type: 'array', items: { type: 'number' } };
         default: return { type: 'string' };
       }
+    }
+
+    function getTypeSchema(typeValue, propertyRowId = null) {
+      if (typeValue !== 'object') {
+        return getBasicTypeSchema(typeValue);
+      }
+
+      // Handle object type - read properties from the sub-editor
+      const objPropsContainer = document.getElementById(`obj-props-${propertyRowId}`);
+      if (!objPropsContainer) {
+        return { type: 'object', properties: {}, additionalProperties: false };
+      }
+
+      const properties = {};
+      const required = [];
+
+      objPropsContainer.querySelectorAll('.object-prop-row').forEach(row => {
+        const propName = row.querySelector('.obj-prop-name').value.trim();
+        const propType = row.querySelector('.obj-prop-type').value;
+        if (propName) {
+          properties[propName] = getBasicTypeSchema(propType);
+          required.push(propName);
+        }
+      });
+
+      return {
+        type: 'object',
+        properties: properties,
+        required: required.length > 0 ? required : undefined,
+        additionalProperties: false
+      };
     }
 
     function ensurePlusPrefix(name) {
@@ -570,7 +700,9 @@
         document.querySelectorAll('#root-props-list .item').forEach(item => {
           const name = ensurePlusPrefix(item.querySelector('.root-prop-name').value);
           if (name) {
-            ext.extraRootProperties[name] = getTypeSchema(item.querySelector('.root-prop-type').value);
+            const itemId = item.id.replace('root-prop-', '');
+            const propId = `root-${itemId}`;
+            ext.extraRootProperties[name] = getTypeSchema(item.querySelector('.root-prop-type').value, propId);
           }
         });
       }
@@ -586,7 +718,8 @@
           item.querySelectorAll('.property-row').forEach(row => {
             const name = ensurePlusPrefix(row.querySelector('.prop-name').value);
             if (name) {
-              ext.extraAttributes[target][name] = getTypeSchema(row.querySelector('.prop-type').value);
+              const rowId = row.id.replace('prop-', '');
+              ext.extraAttributes[target][name] = getTypeSchema(row.querySelector('.prop-type').value, rowId);
             }
           });
         });
@@ -614,7 +747,8 @@
             item.querySelectorAll('.property-row').forEach(row => {
               const propName = row.querySelector('.prop-name').value;
               if (propName) {
-                props[propName] = getTypeSchema(row.querySelector('.prop-type').value);
+                const rowId = row.id.replace('prop-', '');
+                props[propName] = getTypeSchema(row.querySelector('.prop-type').value, rowId);
               }
             });
             if (Object.keys(props).length > 0) {
@@ -664,8 +798,9 @@
             item.querySelectorAll('.co-properties .property-row').forEach(row => {
               const propName = row.querySelector('.prop-name').value;
               if (propName) {
+                const rowId = row.id.replace('prop-', '');
                 coSchema.allOf[1].properties.attributes.properties[propName] =
-                  getTypeSchema(row.querySelector('.prop-type').value);
+                  getTypeSchema(row.querySelector('.prop-type').value, rowId);
               }
             });
 
